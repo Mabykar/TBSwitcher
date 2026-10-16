@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: swift build -c release
+
+      - name: Shell syntax check
+        run: |
+          for f in install.sh uninstall.sh doctor.sh build.sh; do
+            bash -n "$f"
+          done
+
+      - name: Kext signing status (informational)
+        run: |
+          for k in Vendor/*.kext; do
+            echo "== $k"
+            codesign -dv "$k" 2>&1 || true
+          done
