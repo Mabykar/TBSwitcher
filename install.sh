@@ -1,30 +1,85 @@
 #!/bin/bash
-# Usage: sudo ./install.sh "/Applications/tbswitcher_resources/DisableTurboBoost.64bits.kext"
+# TBSwitcher installer — builds the app, asks for your admin password ONCE, installs everything.
+# Usage:  bash install.sh [--kext /path/to/DisableTurboBoost.64bits.kext]
 set -euo pipefail
-if [[ $EUID -ne 0 ]]; then echo "Run with sudo."; exit 1; fi
+
 HERE="$(cd "$(dirname "$0")" && pwd)"
-KEXT_SRC="${1:-}"
-[[ -d "$KEXT_SRC" ]] || { echo "Pass the path to the ORIGINAL DisableTurboBoost.64bits.kext (unmodified)."; exit 1; }
-[[ -x "$HERE/build/tbhelper" && -d "$HERE/build/TBSwitcher.app" ]] || { echo "Run ./build.sh first."; exit 1; }
+cd "$HERE"
+ORIG_ARGS=("$@")
 
-ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$KEXT_SRC/Contents/Info.plist")
-[[ "$ID" == "com.rugarciap.DisableTurboBoost" ]] || { echo "Unexpected kext bundle id: $ID"; exit 1; }
-echo "--- kext signature ---"
-codesign -dv "$KEXT_SRC" 2>&1 | grep -E 'Identifier|TeamIdentifier|Authority' || echo "WARNING: kext is not signed"
-echo "----------------------"
+say() { printf '%s\n' "$*"; }
+ok()  { printf '  ✓ %s\n' "$*"; }
+die() { printf '\n✗ %s\n' "$*" >&2; exit 1; }
 
+KEXT_ARG=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --kext) [[ $# -ge 2 ]] || die "--kext needs a path"; KEXT_ARG="$2"; shift 2 ;;
+    -h|--help) sed -n '2,4p' "$0"; exit 0 ;;
+    *) KEXT_ARG="$1"; shift ;;   # old style: bash install.sh /path/to.kext
+  esac
+done
+
+if ! sysctl -n machdep.cpu.brand_string | grep -qi intel; then
+  die "This Mac does not have an Intel CPU. Turbo Boost can't be controlled this way on Apple Silicon."
+fi
+
+# ---- as a normal user: build, then re-run ourselves with sudo (one password prompt)
+if [[ $EUID -ne 0 ]]; then
+  say "TBSwitcher installer"
+  say "1/3 Building…"
+  bash "$HERE/build.sh" >/dev/null || die "Build failed. Run 'bash build.sh' to see the error (no Swift? run: xcode-select --install)."
+  ok "built"
+  say "2/3 Administrator password is needed once to install the helper."
+  exec sudo bash "$HERE/install.sh" ${ORIG_ARGS[@]+"${ORIG_ARGS[@]}"}
+fi
+
+# ---- from here on we are root
+[[ -x build/tbhelper && -d build/TBSwitcher.app ]] || die "Build output missing. Run 'bash install.sh' as a normal user (without sudo)."
+
+is_signed() { codesign --verify --strict "$1" >/dev/null 2>&1; }
+
+KEXT_SRC=""
+if [[ -n "$KEXT_ARG" ]]; then
+  [[ -d "$KEXT_ARG" ]] || die "Kext not found: $KEXT_ARG"
+  KEXT_SRC="$KEXT_ARG"
+  is_signed "$KEXT_SRC" || say "  ! WARNING: this kext is not code-signed; macOS will very likely refuse to load it."
+else
+  for c in "$HERE/Vendor/DisableTurboBoost.64bits.kext" \
+           "/Applications/Turbo Boost Switcher.app/Contents/Resources/DisableTurboBoost.64bits.kext"; do
+    [[ -d "$c" ]] || continue
+    if is_signed "$c"; then KEXT_SRC="$c"; break; fi
+    say "  - skipped (not code-signed): $c"
+  done
+fi
+
+[[ -n "$KEXT_SRC" ]] || die "No code-signed kext found.
+macOS only loads kernel extensions that are signed and approved by you.
+If the kext in Vendor/ is unsigned (no _CodeSignature folder), it can't be used as-is.
+Easiest fix: download the free official Turbo Boost Switcher app (see README, 'Getting a signed kext'),
+drop it into /Applications (you don't need to run it) and run again:  bash install.sh"
+
+ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$KEXT_SRC/Contents/Info.plist" 2>/dev/null || true)
+[[ "$ID" == "com.rugarciap.DisableTurboBoost" ]] || die "Unexpected kext bundle id: '$ID'"
+ok "kext: $KEXT_SRC"
+codesign -dv "$KEXT_SRC" 2>&1 | grep -E 'TeamIdentifier|Authority=' | sed 's/^/      /' || true
+
+say "3/3 Installing…"
 LABEL=local.tbswitcher.helper
 SUP=/Library/PrivilegedHelperTools/$LABEL
 PLIST=/Library/LaunchDaemons/$LABEL.plist
+APP=/Applications/TBSwitcher.app
 
+pkill -x TBSwitcher 2>/dev/null || true
 launchctl bootout system/$LABEL 2>/dev/null || true
-rm -rf "$SUP" /Applications/TBSwitcher.app
+rm -rf "$SUP" "$APP"
 mkdir -p "$SUP"
 ditto "$KEXT_SRC" "$SUP/DisableTurboBoost.64bits.kext"     # ditto keeps the original signature
 install -m 755 "$HERE/build/tbhelper" "$SUP/tbhelper"
-ditto "$HERE/build/TBSwitcher.app" /Applications/TBSwitcher.app
-chown -R root:wheel "$SUP" /Applications/TBSwitcher.app
-chmod -R u+rwX,go+rX,go-w "$SUP" /Applications/TBSwitcher.app
+ditto "$HERE/build/TBSwitcher.app" "$APP"
+chown -R root:wheel "$SUP" "$APP"
+chmod -R u+rwX,go+rX,go-w "$SUP" "$APP"
+is_signed "$SUP/DisableTurboBoost.64bits.kext" || say "  ! WARNING: the installed kext failed the signature check"
 
 cat > "$PLIST" <<PLISTEOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -39,6 +94,16 @@ cat > "$PLIST" <<PLISTEOF
 PLISTEOF
 chown root:wheel "$PLIST"; chmod 644 "$PLIST"
 launchctl bootstrap system "$PLIST"
+ok "helper installed (starts on demand)"
+ok "app installed: $APP"
 
-echo "Installed. Starting the app..."
-[[ -n "${SUDO_USER:-}" ]] && sudo -u "$SUDO_USER" open /Applications/TBSwitcher.app || true
+if [[ -n "${SUDO_USER:-}" ]]; then sudo -u "$SUDO_USER" open "$APP" || true; fi
+
+cat <<'DONE'
+
+Done. Look for the ⚡ icon in your menu bar.
+  • Left-click  = toggle Turbo Boost.   Right-click = menu (launch at login, credits, quit).
+  • First time, macOS asks you to allow the extension:
+    System Settings → Privacy & Security → "Allow", then restart and click ⚡ again.
+  • Something wrong?  bash doctor.sh
+DONE
