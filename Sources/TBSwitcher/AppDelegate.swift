@@ -94,7 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let credits = """
         Built on the work of two people:
 
-        **Rubén García Pérez (rugarciap)** — author of Turbo Boost Switcher. Its signed kernel extension is what makes this app possible.
+        **Rubén García Pérez (rugarciap)** — author of Turbo Boost Switcher. His app and kernel extension are what make this one possible.
         **Adam Strzelecki (nanoant)** — author of the original DisableTurboBoost.kext.
 
         Huge thanks to both. 🙏
