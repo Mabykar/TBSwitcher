@@ -4,3 +4,6 @@ build
 .DS_Store
 *~
 *.zip
+.swiftpm/
+DerivedData/
+xcuserdata/
