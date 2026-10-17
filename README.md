@@ -6,7 +6,7 @@ Click the bolt → Turbo Boost goes off (cooler, quieter, longer battery). Click
 
 🇷🇺 [Читать по-русски](README.ru.md)
 
-> **Status:** early release, built for Intel Macs on macOS Tahoe 26. Reports from other setups are very welcome.
+> **Status:** early release. Verified on one Mac: MacBook Pro 16" (Intel), macOS Tahoe 26, SIP enabled — Turbo Boost really switches off and on (checked with `powermetrics`, see below). Reports from other setups are very welcome.
 > **Intel Macs only** — Apple Silicon has no Turbo Boost to control.
 
 ## Install
@@ -20,10 +20,8 @@ bash install.sh
 ```
 
 The installer builds the app, asks for your admin password **once**, and starts the ⚡ icon.
-The first time you turn Turbo Boost off, macOS asks you to allow the kernel extension:
+macOS may ask you to allow the kernel extension the first time:
 **System Settings → Privacy & Security → Allow**, then restart and click ⚡ again.
-
-If the installer stops with *"No code-signed kext found"*, read [Getting a signed kext](#getting-a-signed-kext).
 
 ## Use
 
@@ -36,21 +34,28 @@ If the installer stops with *"No code-signed kext found"*, read [Getting a signe
 
 Remove everything: `bash uninstall.sh`. Something odd: `bash doctor.sh` prints a report you can paste into an issue.
 
-## Getting a signed kext
+## Check that it really works
 
-macOS only loads kernel extensions that are **code-signed and approved by you** — no need to turn SIP off for that.
-The kexts in [`Vendor/`](Vendor/) come from the open-source Turbo Boost Switcher repository. Copies without a `_CodeSignature`
-folder are **not signed** and macOS will refuse them (`bash doctor.sh` tells you for sure).
+```bash
+sudo powermetrics --samplers cpu_power -i 2000 -n 2 | grep "CPU Average frequency"
+```
 
-So `install.sh` looks for a signed kext in this order:
+Run it with Turbo Boost off, then on, under some load. On the author's Mac: **off** → never above ~97 % of nominal frequency;
+**on** → peaks of ~176 % (about 4.2 GHz).
 
-1. `bash install.sh --kext /path/to/DisableTurboBoost.64bits.kext`
-2. `Vendor/DisableTurboBoost.64bits.kext` — if it is signed
-3. `/Applications/Turbo Boost Switcher.app` — the official app's own kext
+## About the kext and signing
 
-Easiest fix: download the free official app from <https://github.com/rugarciap/Turbo-Boost-Switcher>
-(download link is in its README), drag it to `/Applications` (you don't have to run it), then `bash install.sh` again.
-We deliberately don't support the "partially disable SIP and use an unsigned kext" route.
+Apple normally expects kernel extensions to be code-signed. The kext in [`Vendor/`](Vendor/) has no `_CodeSignature` folder,
+i.e. it is **not signed** — and still, on the author's Mac (SIP **enabled**) it loads after the usual approval and works.
+We don't know whether every Mac and macOS version behaves the same.
+
+If macOS refuses to load it on yours:
+
+1. Run `bash doctor.sh` and open an issue with the output.
+2. Try another build of the kext (a signed one, if you have it): `bash install.sh --kext /path/to/DisableTurboBoost.64bits.kext`.
+   The installer prefers a code-signed kext when it finds one and tells you when it uses an unsigned one.
+
+We deliberately don't support relaxing SIP to make it work.
 
 ## How it works
 
@@ -69,7 +74,7 @@ It accepts exactly one thing — a boolean. See [SECURITY.md](SECURITY.md).
 Other tools built on the same kext report that it can be unloaded on wake. TBSwitcher remembers your last choice and
 re-applies it after wake and at launch (menu: *Restore my choice after sleep / reboot*, on by default).
 
-**Why does macOS ask me to allow an extension?** It does that for every third-party kernel extension, once.
+**Why does macOS ask me to allow an extension?** It does that for third-party kernel extensions.
 
 **Why isn't the app notarized?** That needs a paid Apple Developer ID. For now you build it yourself from source — which is also why you can read every line.
 
@@ -77,7 +82,7 @@ re-applies it after wake and at launch (menu: *Restore my choice after sleep / r
 
 This project exists only because of two people. **Huge thanks to:**
 
-- **Rubén García Pérez ([rugarciap](https://github.com/rugarciap))** — author of [Turbo Boost Switcher](https://github.com/rugarciap/Turbo-Boost-Switcher), whose signed kernel extension makes all of this possible.
+- **Rubén García Pérez ([rugarciap](https://github.com/rugarciap))** — author of [Turbo Boost Switcher](https://github.com/rugarciap/Turbo-Boost-Switcher), whose app and kernel extension make all of this possible.
   If you want sensors, charts, auto modes and a polished, signed app, please buy his [PRO version](https://www.rugarciap.com/turbo-boost-switcher-for-os-x/) — that is what keeps the whole thing alive.
 - **Adam Strzelecki ([nanoant](https://github.com/nanoant))** — author of the original [DisableTurboBoost.kext](https://github.com/nanoant/DisableTurboBoost.kext).
 
