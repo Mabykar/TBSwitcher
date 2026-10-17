@@ -5,6 +5,7 @@
     <key>CFBundleIdentifier</key><string>local.tbswitcher.app</string>
     <key>CFBundleName</key><string>TBSwitcher</string>
     <key>CFBundleExecutable</key><string>TBSwitcher</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>1.2.0</string>
     <key>CFBundleVersion</key><string>3</string>
