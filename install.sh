@@ -39,30 +39,32 @@ fi
 
 is_signed() { codesign --verify --strict "$1" >/dev/null 2>&1; }
 
+# Pick the kext: --kext PATH, else Vendor/, else the official app's. A code-signed one is preferred;
+# an unsigned one is still used (it can load on some Macs) but we say so.
 KEXT_SRC=""
+UNSIGNED_FALLBACK=""
 if [[ -n "$KEXT_ARG" ]]; then
   [[ -d "$KEXT_ARG" ]] || die "Kext not found: $KEXT_ARG"
   KEXT_SRC="$KEXT_ARG"
-  is_signed "$KEXT_SRC" || say "  ! WARNING: this kext is not code-signed; macOS will very likely refuse to load it."
 else
   for c in "$HERE/Vendor/DisableTurboBoost.64bits.kext" \
            "/Applications/Turbo Boost Switcher.app/Contents/Resources/DisableTurboBoost.64bits.kext"; do
     [[ -d "$c" ]] || continue
     if is_signed "$c"; then KEXT_SRC="$c"; break; fi
-    say "  - skipped (not code-signed): $c"
+    [[ -n "$UNSIGNED_FALLBACK" ]] || UNSIGNED_FALLBACK="$c"
   done
+  [[ -n "$KEXT_SRC" ]] || KEXT_SRC="$UNSIGNED_FALLBACK"
 fi
-
-[[ -n "$KEXT_SRC" ]] || die "No code-signed kext found.
-macOS only loads kernel extensions that are signed and approved by you.
-If the kext in Vendor/ is unsigned (no _CodeSignature folder), it can't be used as-is.
-Easiest fix: download the free official Turbo Boost Switcher app (see README, 'Getting a signed kext'),
-drop it into /Applications (you don't need to run it) and run again:  bash install.sh"
+[[ -n "$KEXT_SRC" ]] || die "No kext found. Put DisableTurboBoost.64bits.kext into Vendor/ or run: bash install.sh --kext /path/to/it"
 
 ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$KEXT_SRC/Contents/Info.plist" 2>/dev/null || true)
 [[ "$ID" == "com.rugarciap.DisableTurboBoost" ]] || die "Unexpected kext bundle id: '$ID'"
 ok "kext: $KEXT_SRC"
-codesign -dv "$KEXT_SRC" 2>&1 | grep -E 'TeamIdentifier|Authority=' | sed 's/^/      /' || true
+if is_signed "$KEXT_SRC"; then
+  codesign -dv "$KEXT_SRC" 2>&1 | grep -E 'TeamIdentifier|Authority=' | sed 's/^/      /' || true
+else
+  say "  ! This kext is not code-signed. It does load on some Macs; if macOS refuses it, see README → 'About the kext and signing'."
+fi
 
 say "3/3 Installing…"
 LABEL=local.tbswitcher.helper
@@ -74,12 +76,11 @@ pkill -x TBSwitcher 2>/dev/null || true
 launchctl bootout system/$LABEL 2>/dev/null || true
 rm -rf "$SUP" "$APP"
 mkdir -p "$SUP"
-ditto "$KEXT_SRC" "$SUP/DisableTurboBoost.64bits.kext"     # ditto keeps the original signature
+ditto "$KEXT_SRC" "$SUP/DisableTurboBoost.64bits.kext"     # ditto keeps the original bytes and any signature
 install -m 755 "$HERE/build/tbhelper" "$SUP/tbhelper"
 ditto "$HERE/build/TBSwitcher.app" "$APP"
 chown -R root:wheel "$SUP" "$APP"
 chmod -R u+rwX,go+rX,go-w "$SUP" "$APP"
-is_signed "$SUP/DisableTurboBoost.64bits.kext" || say "  ! WARNING: the installed kext failed the signature check"
 
 cat > "$PLIST" <<PLISTEOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -103,7 +104,7 @@ cat <<'DONE'
 
 Done. Look for the ⚡ icon in your menu bar.
   • Left-click  = toggle Turbo Boost.   Right-click = menu (launch at login, credits, quit).
-  • First time, macOS asks you to allow the extension:
+  • First time, macOS may ask you to allow the extension:
     System Settings → Privacy & Security → "Allow", then restart and click ⚡ again.
   • Something wrong?  bash doctor.sh
 DONE

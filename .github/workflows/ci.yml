@@ -15,7 +15,7 @@ jobs:
 
       - name: Shell syntax check
         run: |
-          for f in install.sh uninstall.sh doctor.sh build.sh; do
+          for f in get.sh install.sh uninstall.sh doctor.sh build.sh; do
             bash -n "$f"
           done
 

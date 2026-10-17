@@ -6,22 +6,21 @@ TBSwitcher would not exist without these two people. Thank you both. 🙏
 
 **Rubén García Pérez ([rugarciap](https://github.com/rugarciap))**
 Author of [Turbo Boost Switcher](https://github.com/rugarciap/Turbo-Boost-Switcher) (GPL-2.0), the app this project is a minimal re-imagining of.
-His signed kernel extension is what lets Turbo Boost be controlled on modern macOS without turning SIP off.
+His app and the kernel extension it builds on are what make Turbo Boost control practical on macOS.
 If you want the full-featured, signed app (sensors, charts, auto modes), please support him by buying the PRO version:
 <https://www.rugarciap.com/turbo-boost-switcher-for-os-x/>
 
 **Adam Strzelecki ([nanoant](https://github.com/nanoant))**
-Author of the original [DisableTurboBoost.kext](https://github.com/nanoant/DisableTurboBoost.kext), the idea and code that Turbo Boost Switcher
+Author of the original [DisableTurboBoost.kext](https://github.com/nanoant/DisableTurboBoost.kext) (MIT, © 2012 Adam Strzelecki), the idea and code that Turbo Boost Switcher
 (per its own README) builds on.
 
 ## Third-party components
 
 | Path | What | Origin | License |
 |---|---|---|---|
-| `Vendor/DisableTurboBoost.*.kext` | Kernel extension that sets the Turbo Boost disable bit | Distributed with rugarciap's Turbo Boost Switcher; based on nanoant's DisableTurboBoost.kext | GPL-2.0 for the Turbo Boost Switcher repository; check the upstream kext repository for nanoant's terms |
+| `Vendor/DisableTurboBoost.*.kext` | Kernel extension that sets the Turbo Boost disable bit in the CPU's MSR | Taken from rugarciap's Turbo Boost Switcher repository; derived from nanoant's DisableTurboBoost.kext | The original kext code is MIT (full text in [Vendor/LICENSE-nanoant.txt](Vendor/LICENSE-nanoant.txt)); the Turbo Boost Switcher repository that distributes this build is GPL-2.0 |
 
-The corresponding source for the kext is available upstream at <https://github.com/nanoant/DisableTurboBoost.kext>
-and in the Turbo Boost Switcher repository linked above. These files are included unmodified and keep their original licenses.
+Source for the original kext: <https://github.com/nanoant/DisableTurboBoost.kext>. These files are included unmodified and keep their original licenses.
 
 ## This project
 
