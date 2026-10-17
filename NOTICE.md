@@ -6,7 +6,7 @@ TBSwitcher would not exist without these two people. Thank you both. 🙏
 
 **Rubén García Pérez ([rugarciap](https://github.com/rugarciap))**
 Author of [Turbo Boost Switcher](https://github.com/rugarciap/Turbo-Boost-Switcher) (GPL-2.0), the app this project is a minimal re-imagining of.
-His signed kernel extension is what lets Turbo Boost be controlled on modern macOS without turning SIP off.
+His app and the kernel extension it builds on are what make Turbo Boost control practical on macOS.
 If you want the full-featured, signed app (sensors, charts, auto modes), please support him by buying the PRO version:
 <https://www.rugarciap.com/turbo-boost-switcher-for-os-x/>
 
@@ -18,7 +18,7 @@ Author of the original [DisableTurboBoost.kext](https://github.com/nanoant/Disab
 
 | Path | What | Origin | License |
 |---|---|---|---|
-| `Vendor/DisableTurboBoost.*.kext` | Kernel extension that sets the Turbo Boost disable bit | Distributed with rugarciap's Turbo Boost Switcher; based on nanoant's DisableTurboBoost.kext | GPL-2.0 for the Turbo Boost Switcher repository; check the upstream kext repository for nanoant's terms |
+| `Vendor/DisableTurboBoost.*.kext` | Kernel extension that sets the Turbo Boost disable bit | Taken from rugarciap's Turbo Boost Switcher repository; based on nanoant's DisableTurboBoost.kext | GPL-2.0 for the Turbo Boost Switcher repository; check the upstream kext repository for nanoant's terms |
 
 The corresponding source for the kext is available upstream at <https://github.com/nanoant/DisableTurboBoost.kext>
 and in the Turbo Boost Switcher repository linked above. These files are included unmodified and keep their original licenses.
