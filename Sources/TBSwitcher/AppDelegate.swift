@@ -2,29 +2,8 @@ import AppKit
 import ServiceManagement
 import TBShared
 
-/// App icon drawn in code (orange→red rounded square with a white bolt), so no image asset is needed.
-/// It is shown in the About panel and in alerts.
-enum AppIcon {
-    static func make(size: CGFloat = 512) -> NSImage {
-        NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
-            let rect = NSRect(x: size * 0.06, y: size * 0.06, width: size * 0.88, height: size * 0.88)
-            let path = NSBezierPath(roundedRect: rect, xRadius: size * 0.2, yRadius: size * 0.2)
-            NSGradient(
-                starting: NSColor(calibratedRed: 1.0, green: 0.70, blue: 0.25, alpha: 1),
-                ending: NSColor(calibratedRed: 1.0, green: 0.27, blue: 0.23, alpha: 1)
-            )?.draw(in: path, angle: -45)
-
-            let config = NSImage.SymbolConfiguration(pointSize: size * 0.5, weight: .bold)
-                .applying(NSImage.SymbolConfiguration(paletteColors: [.white]))
-            if let bolt = NSImage(systemSymbolName: "bolt.fill", accessibilityDescription: nil)?
-                .withSymbolConfiguration(config) {
-                let s = bolt.size
-                bolt.draw(in: NSRect(x: (size - s.width) / 2, y: (size - s.height) / 2, width: s.width, height: s.height))
-            }
-            return true
-        }
-    }
-}
+// The app icon comes from the bundle (AppIcon.icns, built by build.sh from Sources/Assets/ico.png).
+// macOS uses it automatically for the About panel and for alerts.
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -45,7 +24,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: lifecycle
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.applicationIconImage = AppIcon.make()
         if let b = item.button {
             b.target = self
             b.action = #selector(clicked(_:))
@@ -139,7 +117,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationName: "TBSwitcher",
-            .applicationIcon: AppIcon.make(),
             .credits: styled,
         ])
     }
@@ -222,7 +199,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         refresh()
         guard !ok, userInitiated else { return }   // automatic restores fail silently
         alert("Could not switch Turbo Boost",
-              msg + "\n\nFirst time? Allow the extension in System Settings → Privacy & Security, restart, then try again.\nStill stuck? Run “bash doctor.sh” in the project folder and open an issue.")
+              msg + "\n\nFirst time? Allow the extension in System Settings → Privacy & Security, restart, then try again.\nStill stuck? Open an issue on GitHub (Mabykar/TBSwitcher) and include this message.")
     }
 
     private func alert(_ title: String, _ text: String) {
