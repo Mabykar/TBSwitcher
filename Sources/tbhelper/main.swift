@@ -6,9 +6,9 @@ final class Helper: NSObject, NSXPCListenerDelegate, TBHelperProtocol {
     private let lock = NSLock()
 
     // MARK: XPC trust check
-    // No paid Developer ID => no Team ID to pin. Instead: the caller must be the exact
-    // executable installed by install.sh, and that file must be owned by root
-    // (so a normal user process cannot replace it).
+    // No paid Developer ID => no Team ID to pin. Instead the caller must be the exact executable
+    // installed by install.sh, and that file must be owned by root (so a normal user process
+    // cannot replace it). The app is built with the hardened runtime, which blocks DYLD injection.
     private func isTrusted(_ c: NSXPCConnection) -> Bool {
         var buf = [CChar](repeating: 0, count: 4096)
         guard proc_pidpath(c.processIdentifier, &buf, UInt32(buf.count)) > 0 else { return false }
@@ -38,6 +38,13 @@ final class Helper: NSObject, NSXPCListenerDelegate, TBHelperProtocol {
             // Turbo OFF -> load kext
             guard FileManager.default.fileExists(atPath: TB.kextPath) else {
                 reply(false, "Kext not found at \(TB.kextPath)"); return
+            }
+            // Fail early with a clear message instead of an obscure kextutil error.
+            let v = runProcess("/usr/bin/codesign", ["--verify", "--strict", TB.kextPath])
+            guard v.status == 0 else {
+                reply(false, "The installed kext is not validly code-signed, so macOS will not load it. "
+                    + "Use the signed kext from the official Turbo Boost Switcher app (see README, “Getting a signed kext”) and re-run install.sh.\n\(v.output)")
+                return
             }
             var r = runProcess("/usr/bin/kextutil", [TB.kextPath])
             if r.status != 0 { r = runProcess("/usr/bin/kmutil", ["load", "-p", TB.kextPath]) }
