@@ -33,22 +33,25 @@ final class Helper: NSObject, NSXPCListenerDelegate, TBHelperProtocol {
             // Turbo ON -> unload kext
             var r = runProcess("/sbin/kextunload", ["-b", TB.kextBundleID])
             if r.status != 0 { r = runProcess("/usr/bin/kmutil", ["unload", "-b", TB.kextBundleID]) }
-            reply(!isTurboBoostDisabled(), r.output)
+            reply(r.status == 0 || !isTurboBoostDisabled(), r.output)
         } else {
             // Turbo OFF -> load kext
             guard FileManager.default.fileExists(atPath: TB.kextPath) else {
                 reply(false, "Kext not found at \(TB.kextPath)"); return
             }
-            // Fail early with a clear message instead of an obscure kextutil error.
-            let v = runProcess("/usr/bin/codesign", ["--verify", "--strict", TB.kextPath])
-            guard v.status == 0 else {
-                reply(false, "The installed kext is not validly code-signed, so macOS will not load it. "
-                    + "Use the signed kext from the official Turbo Boost Switcher app (see README, “Getting a signed kext”) and re-run install.sh.\n\(v.output)")
-                return
-            }
             var r = runProcess("/usr/bin/kextutil", [TB.kextPath])
             if r.status != 0 { r = runProcess("/usr/bin/kmutil", ["load", "-p", TB.kextPath]) }
-            reply(isTurboBoostDisabled(), r.output)
+            let ok = r.status == 0 || isTurboBoostDisabled()
+            var out = r.output
+            if !ok {
+                // The kext is not required to be signed to *try* loading it (it loads on some Macs),
+                // but if loading failed, say so: it is the first thing to rule out.
+                let v = runProcess("/usr/bin/codesign", ["--verify", "--strict", TB.kextPath])
+                if v.status != 0 {
+                    out += "\nNote: the installed kext is not code-signed; macOS may refuse it. See README, “About the kext and signing”."
+                }
+            }
+            reply(ok, out)
         }
     }
 }
