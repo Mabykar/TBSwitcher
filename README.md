@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/banner.svg" alt="TBSwitcher — a lightning bolt in the menu bar toggles Intel Turbo Boost" width="720">
+</p>
+
 # ⚡ TBSwitcher
 
 A tiny menu bar switch for Intel Turbo Boost.
@@ -13,13 +17,27 @@ Click the bolt → Turbo Boost goes off (cooler, quieter, longer battery). Click
 
 You need an Intel Mac, macOS 13 or newer, and the Command Line Tools (`xcode-select --install`).
 
+**One line:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Mabykar/TBSwitcher/main/get.sh | bash
+```
+
+It downloads the source to a temporary folder, tells you exactly what it is about to install, asks you to confirm,
+builds, and runs `install.sh` (admin password asked **once**). Pin a version with `... | TBSWITCHER_REF=v1.2.0 bash`.
+Uninstall the same way: `curl -fsSL https://raw.githubusercontent.com/Mabykar/TBSwitcher/main/get.sh | bash -s -- --uninstall`.
+
+> Piping a script into your shell means trusting it, and this one installs a root helper and a kernel extension.
+> [Read `get.sh`](get.sh) first, or use the manual way below.
+
+**Manual:**
+
 ```bash
 git clone https://github.com/Mabykar/TBSwitcher.git
 cd TBSwitcher
 bash install.sh
 ```
 
-The installer builds the app, asks for your admin password **once**, and starts the ⚡ icon.
 macOS may ask you to allow the kernel extension the first time:
 **System Settings → Privacy & Security → Allow**, then restart and click ⚡ again.
 
@@ -27,7 +45,7 @@ macOS may ask you to allow the kernel extension the first time:
 
 | Action | What happens |
 |---|---|
-| **Left-click** ⚡ | Toggle Turbo Boost |
+| **Left-click** ⚡ | Toggle Turbo Boost (the bolt dims for a moment while it switches) |
 | **Right-click** ⚡ | Menu: status, restore choice after sleep/reboot, launch at login, credits, quit |
 | ⚡ filled | Turbo Boost **ON** (normal) |
 | ⚡ struck through | Turbo Boost **OFF** |
@@ -46,8 +64,8 @@ Run it with Turbo Boost off, then on, under some load. On the author's Mac: **of
 ## About the kext and signing
 
 Apple normally expects kernel extensions to be code-signed. The kext in [`Vendor/`](Vendor/) has no `_CodeSignature` folder,
-i.e. it is **not signed** — and still, on the author's Mac (SIP **enabled**) it loads after the usual approval and works.
-We don't know whether every Mac and macOS version behaves the same.
+i.e. it is **not signed** — and still, on the author's Mac (SIP **enabled**, no custom boot-args) it loads after the usual approval and works.
+We don't know why, nor whether every Mac and macOS version behaves the same.
 
 If macOS refuses to load it on yours:
 
