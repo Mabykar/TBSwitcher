@@ -2,6 +2,30 @@ import AppKit
 import ServiceManagement
 import TBShared
 
+/// App icon drawn in code (orange→red rounded square with a white bolt), so no image asset is needed.
+/// It is shown in the About panel and in alerts.
+enum AppIcon {
+    static func make(size: CGFloat = 512) -> NSImage {
+        NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
+            let rect = NSRect(x: size * 0.06, y: size * 0.06, width: size * 0.88, height: size * 0.88)
+            let path = NSBezierPath(roundedRect: rect, xRadius: size * 0.2, yRadius: size * 0.2)
+            NSGradient(
+                starting: NSColor(calibratedRed: 1.0, green: 0.70, blue: 0.25, alpha: 1),
+                ending: NSColor(calibratedRed: 1.0, green: 0.27, blue: 0.23, alpha: 1)
+            )?.draw(in: path, angle: -45)
+
+            let config = NSImage.SymbolConfiguration(pointSize: size * 0.5, weight: .bold)
+                .applying(NSImage.SymbolConfiguration(paletteColors: [.white]))
+            if let bolt = NSImage(systemSymbolName: "bolt.fill", accessibilityDescription: nil)?
+                .withSymbolConfiguration(config) {
+                let s = bolt.size
+                bolt.draw(in: NSRect(x: (size - s.width) / 2, y: (size - s.height) / 2, width: s.width, height: s.height))
+            }
+            return true
+        }
+    }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var connection: NSXPCConnection?
@@ -21,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: lifecycle
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.applicationIconImage = AppIcon.make()
         if let b = item.button {
             b.target = self
             b.action = #selector(clicked(_:))
@@ -49,19 +74,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let status = NSMenuItem(title: disabled ? "Turbo Boost: OFF" : "Turbo Boost: ON", action: nil, keyEquivalent: "")
         status.isEnabled = false
         m.addItem(status)
-        m.addItem(menuItem(disabled ? "Turn Turbo Boost ON" : "Turn Turbo Boost OFF", #selector(toggleFromMenu)))
+        m.addItem(menuItem(disabled ? "Turn Turbo Boost ON" : "Turn Turbo Boost OFF", #selector(toggleFromMenu),
+                           symbol: disabled ? "bolt.fill" : "bolt.slash.fill"))
         m.addItem(.separator())
 
-        let restore = menuItem("Restore my choice after sleep / reboot", #selector(toggleReapply))
+        let restore = menuItem("Restore my choice after sleep / reboot", #selector(toggleReapply), symbol: "arrow.counterclockwise")
         restore.state = reapplyAfterWake ? .on : .off
         m.addItem(restore)
 
-        let login = menuItem("Launch at login", #selector(toggleLogin))
+        let login = menuItem("Launch at login", #selector(toggleLogin), symbol: "power")
         login.state = SMAppService.mainApp.status == .enabled ? .on : .off
         m.addItem(login)
         m.addItem(.separator())
 
-        m.addItem(menuItem("About & Credits…", #selector(showAbout)))
+        m.addItem(menuItem("About & Credits…", #selector(showAbout), symbol: "heart"))
         m.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         item.menu = m
@@ -69,9 +95,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.menu = nil
     }
 
-    private func menuItem(_ title: String, _ sel: Selector) -> NSMenuItem {
+    private func menuItem(_ title: String, _ sel: Selector, symbol: String? = nil) -> NSMenuItem {
         let mi = NSMenuItem(title: title, action: sel, keyEquivalent: "")
         mi.target = self
+        if let symbol { mi.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil) }
         return mi
     }
 
@@ -112,6 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationName: "TBSwitcher",
+            .applicationIcon: AppIcon.make(),
             .credits: styled,
         ])
     }
@@ -135,6 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         img?.isTemplate = true
         item.button?.image = img
         item.button?.toolTip = text + " — click to toggle, right-click for menu"
+        item.button?.appearsDisabled = busy      // icon dims while a switch is in progress
     }
 
     // MARK: restore after sleep / reboot
@@ -158,6 +187,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func apply(turboEnabled: Bool, userInitiated: Bool) {
         guard !busy else { return }
         busy = true
+        updateIcon()
         let fail: (String) -> Void = { [weak self] msg in
             DispatchQueue.main.async { self?.finish(false, msg, userInitiated: userInitiated) }
         }
@@ -188,6 +218,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func finish(_ ok: Bool, _ msg: String, userInitiated: Bool) {
         guard busy else { return }
         busy = false
+        updateIcon()
         refresh()
         guard !ok, userInitiated else { return }   // automatic restores fail silently
         alert("Could not switch Turbo Boost",
