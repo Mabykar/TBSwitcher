@@ -35,7 +35,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # ---- from here on we are root
-[[ -x build/tbhelper && -d build/TBSwitcher.app ]] || die "Build output missing. Run 'bash install.sh' as a normal user (without sudo)."
+[[ -x build/TBHelper && -d build/TBSwitcher.app ]] || die "Build output missing. Run 'bash install.sh' as a normal user (without sudo)."
 
 is_signed() { codesign --verify --strict "$1" >/dev/null 2>&1; }
 
@@ -63,7 +63,7 @@ ok "kext: $KEXT_SRC"
 if is_signed "$KEXT_SRC"; then
   codesign -dv "$KEXT_SRC" 2>&1 | grep -E 'TeamIdentifier|Authority=' | sed 's/^/      /' || true
 else
-  say "  ! This kext is not code-signed. It does load on some Macs; if macOS refuses it, see README → 'About the kext and signing'."
+  say "  ! This kext is not code-signed. It does load on some Macs; if macOS refuses it, open an issue and tell us your Mac model and macOS version."
 fi
 
 say "3/3 Installing…"
@@ -77,7 +77,7 @@ launchctl bootout system/$LABEL 2>/dev/null || true
 rm -rf "$SUP" "$APP"
 mkdir -p "$SUP"
 ditto "$KEXT_SRC" "$SUP/DisableTurboBoost.64bits.kext"     # ditto keeps the original bytes and any signature
-install -m 755 "$HERE/build/tbhelper" "$SUP/tbhelper"
+install -m 755 "$HERE/build/TBHelper" "$SUP/TBHelper"
 ditto "$HERE/build/TBSwitcher.app" "$APP"
 chown -R root:wheel "$SUP" "$APP"
 chmod -R u+rwX,go+rX,go-w "$SUP" "$APP"
@@ -88,7 +88,7 @@ cat > "$PLIST" <<PLISTEOF
 <plist version="1.0">
 <dict>
     <key>Label</key><string>$LABEL</string>
-    <key>ProgramArguments</key><array><string>$SUP/tbhelper</string></array>
+    <key>ProgramArguments</key><array><string>$SUP/TBHelper</string></array>
     <key>MachServices</key><dict><key>$LABEL</key><true/></dict>
 </dict>
 </plist>
@@ -106,5 +106,5 @@ Done. Look for the ⚡ icon in your menu bar.
   • Left-click  = toggle Turbo Boost.   Right-click = menu (launch at login, credits, quit).
   • First time, macOS may ask you to allow the extension:
     System Settings → Privacy & Security → "Allow", then restart and click ⚡ again.
-  • Something wrong?  bash doctor.sh
+  • Something wrong?  Open an issue: https://github.com/Mabykar/TBSwitcher/issues
 DONE
