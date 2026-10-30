@@ -1,0 +1,9 @@
+#!/bin/bash
+set -euo pipefail
+[[ "${3:-/}" == / ]] || { echo 'Install on the running startup disk only.' >&2; exit 1; }
+/usr/sbin/sysctl -n machdep.cpu.brand_string | /usr/bin/grep -qi intel || {
+  echo 'TBSwitcher requires an Intel Mac.' >&2; exit 1;
+}
+# Stop the old helper before Installer replaces its executable.
+/bin/launchctl bootout system/local.tbswitcher.helper 2>/dev/null || true
+/usr/bin/pkill -x TBSwitcher 2>/dev/null || true

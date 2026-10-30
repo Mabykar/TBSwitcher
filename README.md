@@ -22,6 +22,21 @@ Click again → it's back. **No admin password on every click.**
 
 ## Install
 
+### Prebuilt installer (PKG / DMG)
+
+On an Intel Mac running macOS 13 or newer, open the DMG and run the included
+PKG installer. It installs the app, root helper and original kext. Open
+`/Applications/TBSwitcher.app` afterwards and click the lightning icon.
+Developer tools and an Apple Developer subscription are not needed to install.
+
+These community packages have no Developer ID signature or Apple notarization.
+If macOS blocks opening the downloaded installer, attempt to open it first, then
+use **System Settings → Privacy & Security → Open Anyway** for that trusted download.
+Kext approval (**Allow**, then restart) is a separate step.
+See the Read Me inside the DMG for installation, removal and credits.
+
+### Build from source
+
 **Requirements:** an Intel Mac, macOS 13 or newer, and the Command Line Tools.
 
 ```bash
@@ -56,6 +71,20 @@ bash install.sh
 
 macOS may ask you to allow the kernel extension the first time:
 **System Settings → Privacy & Security → Allow**, then restart and click ⚡ again.
+
+### About the kext and signing
+
+The bundled legacy kext is unsigned. macOS recognizes the original package through
+an Apple signature-exception list, using a hash of the entire bundle. Preserve all
+of its files, including `Contents/Info.plist~`: despite its backup-style name, removing
+it changes that hash and causes `Authenticating extension failed: Bad code signature`.
+Signing the application does not replace this exception or sign the kext.
+
+The original bundle hash is `f5b755b280b4e501bacd72362f0bb26d006d1762`
+(Apple's `getAdhocSignatureHash` algorithm). This matches the
+`OSKextSigExceptionHashList` entry on the investigated macOS 26.7.2 system;
+availability of the exception on other macOS versions is not guaranteed.
+User approval and a restart may still be required.
 
 ## Check that it really works
 
@@ -113,3 +142,23 @@ TBSwitcher is an independent, minimal project and is not affiliated with either 
 
 TBSwitcher's own code is [MIT](LICENSE).
 Third-party files in `Vendor/` keep their original licenses — see [NOTICE.md](NOTICE.md).
+
+
+## Build distribution packages
+
+On an Intel Mac with the Command Line Tools installed:
+
+```bash
+bash package.sh
+```
+
+This rebuilds the app and helper, checks every file in the legacy kext against
+`packaging/kext.sha256`, and creates `dist/TBSwitcher-<version>-Intel.pkg`,
+`dist/TBSwitcher-<version>-Intel.dmg` and SHA-256 checksums. No paid account is
+needed. The DMG contains the installer, instructions, licenses and an uninstaller.
+The installer supports the running startup disk only and requires administrator
+access. It does not load the kext or restart the Mac automatically.
+
+Keep the kext bundle unchanged: even `Info.plist~` is required for Apple's legacy
+signature exception. Do not re-sign it. These artifacts are unsigned community
+packages; creating a DMG does not notarize its contents.
