@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds the app and the helper into ./build (you normally don't run this directly: use install.sh).
+# Builds the app and helper into ./build for development and release packaging.
 set -euo pipefail
 cd "$(dirname "$0")"
 

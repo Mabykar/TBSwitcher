@@ -41,10 +41,24 @@ Opening the installer and allowing the kernel extension are separate approvals. 
 | Right-click or Control-click | Open the menu |
 | Launch at login | Start TBSwitcher when you sign in |
 | Restore my choice after sleep / reboot | Reapply your last choice after wake and at app launch; enabled by default |
+| Automatic: battery OFF / power ON | Follow the power source; disabled by default |
+| Enable temporarily | Enable for 15, 30 or 60 minutes, then return to the previous mode |
+| Global shortcut: ⌃⌥⌘T | Optional Control–Option–Command–T to toggle from any app |
+| Copy diagnostics / Show last error | Troubleshoot manual and automatic operations |
 
-The menu and tooltip show the detected Turbo Boost state. Turning Turbo Boost off can reduce heat, fan noise and power use at the cost of peak CPU performance. Results depend on your workload and Mac.
+The menu and tooltip show the detected Turbo Boost state. If the extension state cannot be read, the app shows Unknown and avoids switching based on a guess. Use **Copy diagnostics** in the menu to copy a troubleshooting report; **Show last error…** also includes failures during automatic restoration. Turning Turbo Boost off can reduce heat, fan noise and power use at the cost of peak CPU performance. Results depend on your workload and Mac.
 
 To restore your choice after signing in automatically, enable **Launch at login** as well.
+
+Temporary sessions take priority over the automatic power rule. Their deadline and your previous
+choice survive app restarts; after sleep, restoration runs when the app wakes. The app must be
+running to enforce a deadline. Ending a temporary session returns to the current automatic rule
+or the saved manual choice. A normal click or global shortcut exits both automatic and temporary
+modes after a successful switch. Automatic mode follows power-source changes; turning it off
+leaves the current state in place. If power-source detection fails, the app leaves the state unchanged.
+
+The interface follows the system language: Russian or English. The global shortcut is optional;
+if another app has registered it, TBSwitcher reports the conflict.
 
 ## Compatibility
 
@@ -58,19 +72,13 @@ Run `uninstall.command` from the DMG and enter your administrator password. It r
 
 The driver is shared with the original Turbo Boost Switcher: unloading it also affects that application's current Turbo Boost state.
 
-Alternatively, remove an installation using the source installer:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Mabykar/TBSwitcher/main/get.sh | bash -s -- --uninstall
-```
-
 ## Troubleshooting
 
 **The extension needs approval or a restart.** Open Privacy & Security, allow the extension, restart, then try again. Reinstalling alone does not complete this approval.
 
 **The helper is unavailable.** Run the PKG installer again, then reopen `/Applications/TBSwitcher.app`.
 
-**The error says `Bad code signature`.** Use the complete kext shipped with this project. Do not remove `Contents/Info.plist~`, edit the bundle, or re-sign it. The source installer and release packager check the bundled files before installation or packaging.
+**The error says `Bad code signature`.** Use the complete kext shipped with this project. Do not remove `Contents/Info.plist~`, edit the bundle, or re-sign it. The release packager checks the bundled files before installation or packaging.
 
 If the problem persists, [open an issue](https://github.com/Mabykar/TBSwitcher/issues) with your Mac model, macOS version and the complete error message.
 
@@ -92,23 +100,17 @@ An Intel Mac running macOS 13 or newer and the Command Line Tools are required:
 xcode-select --install
 ```
 
-### One-line installation
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Mabykar/TBSwitcher/main/get.sh | bash
-```
-
-The script downloads the source, explains the installation and asks for confirmation, then builds the app. An administrator password is requested to install the helper.
-
-### Manual installation
+### Development build
 
 ```bash
 git clone https://github.com/Mabykar/TBSwitcher.git
 cd TBSwitcher
-bash install.sh
+bash build.sh
 ```
 
-To build without installing, run `bash build.sh`. Outputs are in `build/`.
+Outputs are in `build/`. To install a local build, create a PKG using `bash package.sh`
+and run that installer. The helper trusts the app installed at its fixed path in Applications.
+There is no source-install or curl-to-shell installer. End users only need the release PKG/DMG.
 
 ### Build PKG and DMG
 
