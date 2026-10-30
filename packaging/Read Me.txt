@@ -14,6 +14,14 @@ Only approve a download you trust. No global security settings need changing.
 Apple Developer membership and developer tools are not required to install.
 
 Left-click: toggle Turbo Boost. Right-click: settings and quit.
+Optional automatic mode: Turbo Boost off on battery, on with external power.
+Temporarily enable for 15, 30 or 60 minutes, then return to the previous mode.
+Temporary deadlines survive app restarts; the app must be running to restore them.
+After sleep, the app restores the appropriate mode on wake.
+A manual toggle exits automatic and temporary modes after a successful switch.
+Optional global shortcut: Control-Option-Command-T. Enable it in the menu.
+Interface language: Russian or English, following your system preference.
+Copy diagnostics from the menu when reporting a problem.
 Apple Silicon is not supported. Preserve the original kext files unchanged.
 The legacy Apple signature exception may not be available on every macOS version.
 

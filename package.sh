@@ -47,7 +47,7 @@ cp "dist/$PKG" "$WORK/image/$PKG"
 cp packaging/'Read Me.txt' "$WORK/image/Read Me.txt"
 cp LICENSE "$WORK/image/LICENSE.txt"
 cp Vendor/LICENSE-nanoant.txt "$WORK/image/LICENSE-nanoant.txt"
-cp uninstall.sh "$WORK/image/uninstall.command"
+cp packaging/uninstall.command "$WORK/image/uninstall.command"
 chmod 755 "$WORK/image/uninstall.command"
 hdiutil create -ov -format UDZO -volname "TBSwitcher $VERSION" \
   -srcfolder "$WORK/image" "$HERE/dist/$DMG"

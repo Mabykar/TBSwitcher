@@ -7,7 +7,7 @@ final class Helper: NSObject, NSXPCListenerDelegate, TBHelperProtocol {
 
     // MARK: XPC trust check
     // No paid Developer ID => no Team ID to pin. Instead the caller must be the exact executable
-    // installed by install.sh, and that file must be owned by root (so a normal user process
+    // installed by the PKG installer, and that file must be owned by root (so a normal user process
     // cannot replace it). The app is built with the hardened runtime, which blocks DYLD injection.
     private func isTrusted(_ c: NSXPCConnection) -> Bool {
         var buf = [CChar](repeating: 0, count: 4096)

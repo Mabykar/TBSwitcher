@@ -1,9 +1,9 @@
 #!/bin/bash
 # Removes TBSwitcher completely: app, helper, launch daemon, saved settings. Turbo Boost goes back to normal.
-# Usage:  bash uninstall.sh
+# Usage:  bash uninstall.command
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-if [[ $EUID -ne 0 ]]; then exec sudo bash "$HERE/uninstall.sh" "$@"; fi
+if [[ $EUID -ne 0 ]]; then exec sudo bash "$HERE/uninstall.command" "$@"; fi
 
 LABEL=local.tbswitcher.helper
 pkill -x TBSwitcher 2>/dev/null || true
