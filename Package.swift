@@ -7,6 +7,7 @@ let package = Package(
     targets: [
         .target(name: "TBShared"),
         .executableTarget(name: "TBSwitcher", dependencies: ["TBShared"]),
-        .executableTarget(name: "TBHelper", dependencies: ["TBShared"]),
+        .executableTarget(name: "TBHelper", dependencies: ["TBShared"], path: "Sources/tbhelper"),
+        .testTarget(name: "TBSharedTests", dependencies: ["TBShared"]),
     ]
 )

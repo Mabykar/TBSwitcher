@@ -8,7 +8,14 @@ import TBShared
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var connection: NSXPCConnection?
-    private var disabled = false      // actual state: kext loaded = Turbo Boost OFF
+    private var connectionErrorHandler: ((String) -> Void)?
+    private var state: TurboState = .unknown
+    private var disabled: Bool { state == .disabled }
+    private let stateQueue = DispatchQueue(label: "local.tbswitcher.state")
+    private var stateGeneration = 0
+    private var operationID: UUID?
+    private var lastError = "None"
+    private var helperStatus = "Not contacted"
     private var busy = false
     private let defaults = UserDefaults.standard
 
@@ -31,7 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         updateIcon()
         refresh { [weak self] in self?.restoreIfNeeded() }
-        Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { [weak self] _ in self?.refresh() }
+        Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { [weak self] _ in self?.refresh() }
         NSWorkspace.shared.notificationCenter.addObserver(
             self, selector: #selector(didWake), name: NSWorkspace.didWakeNotification, object: nil)
     }
@@ -48,8 +55,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: menu
     private func showMenu() {
+        refresh()
         let m = NSMenu()
-        let status = NSMenuItem(title: disabled ? "Turbo Boost: OFF" : "Turbo Boost: ON", action: nil, keyEquivalent: "")
+        let status = NSMenuItem(title: "Turbo Boost: " + state.label, action: nil, keyEquivalent: "")
         status.isEnabled = false
         m.addItem(status)
         m.addItem(menuItem(disabled ? "Turn Turbo Boost ON" : "Turn Turbo Boost OFF", #selector(toggleFromMenu),
@@ -65,6 +73,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         m.addItem(login)
         m.addItem(.separator())
 
+        m.addItem(menuItem("Copy diagnostics", #selector(copyDiagnostics), symbol: "doc.on.doc"))
+        if lastError != "None" {
+            m.addItem(menuItem("Show last error…", #selector(showLastError), symbol: "exclamationmark.triangle"))
+        }
         m.addItem(menuItem("About & Credits…", #selector(showAbout), symbol: "heart"))
         m.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
@@ -123,10 +135,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: state
     private func refresh(then done: (() -> Void)? = nil) {
-        DispatchQueue.global().async {
-            let d = isTurboBoostDisabled()
+        let generation = stateGeneration
+        stateQueue.async {
+            let d = turboBoostState()
             DispatchQueue.main.async {
-                self.disabled = d
+                guard generation == self.stateGeneration else { return }
+                self.state = d
                 self.updateIcon()
                 done?()
             }
@@ -134,8 +148,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateIcon() {
-        let name = disabled ? "bolt.slash.fill" : "bolt.fill"
-        let text = disabled ? "Turbo Boost: OFF" : "Turbo Boost: ON"
+        let name = state == .unknown ? "questionmark.circle" : (disabled ? "bolt.slash.fill" : "bolt.fill")
+        let text = "Turbo Boost: " + state.label
         let img = NSImage(systemSymbolName: name, accessibilityDescription: text)
         img?.isTemplate = true
         item.button?.image = img
@@ -152,25 +166,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func restoreIfNeeded() {
-        guard reapplyAfterWake, wantedOff, !disabled else { return }
+        guard reapplyAfterWake, wantedOff, state == .enabled else { return }
         apply(turboEnabled: false, userInitiated: false)
     }
 
     // MARK: toggle via the root helper
     private func toggle() {
+        guard state != .unknown else {
+            refresh()
+            alert("Turbo Boost state is unknown", "Could not read the extension state. Try again or copy diagnostics from the menu.")
+            return
+        }
         apply(turboEnabled: disabled, userInitiated: true)   // currently OFF -> turn ON, and vice versa
     }
 
     private func apply(turboEnabled: Bool, userInitiated: Bool) {
         guard !busy else { return }
         busy = true
+        stateGeneration += 1
+        let id = UUID()
+        operationID = id
+        DispatchQueue.main.asyncAfter(deadline: .now() + 100) { [weak self] in
+            guard let self, self.operationID == id else { return }
+            self.connection?.invalidate()
+            self.connection = nil
+            self.finish(false, "The helper did not reply in time. Copy diagnostics and try again.", userInitiated: userInitiated)
+        }
         updateIcon()
         let fail: (String) -> Void = { [weak self] msg in
-            DispatchQueue.main.async { self?.finish(false, msg, userInitiated: userInitiated) }
+            DispatchQueue.main.async {
+                guard let self, self.operationID == id else { return }
+                self.finish(false, msg, userInitiated: userInitiated)
+            }
         }
         guard let proxy = helperProxy(onError: fail) else { fail("Could not connect to the helper."); return }
         proxy.setTurboBoost(enabled: turboEnabled) { [weak self] ok, msg in
             DispatchQueue.main.async {
+                guard self?.operationID == id else { return }
                 if ok && userInitiated { self?.wantedOff = !turboEnabled }
                 self?.finish(ok, msg, userInitiated: userInitiated)
             }
@@ -178,10 +210,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func helperProxy(onError: @escaping (String) -> Void) -> TBHelperProtocol? {
+        connectionErrorHandler = onError
         if connection == nil {
             let c = NSXPCConnection(machServiceName: TB.machService, options: .privileged)
             c.remoteObjectInterface = NSXPCInterface(with: TBHelperProtocol.self)
-            let drop: () -> Void = { [weak self] in DispatchQueue.main.async { self?.connection = nil } }
+            let drop: () -> Void = { [weak self, weak c] in
+                DispatchQueue.main.async {
+                    guard let self, self.connection === c else { return }
+                    self.connection = nil
+                    self.connectionErrorHandler?("The helper connection was interrupted.")
+                }
+            }
             c.invalidationHandler = drop
             c.interruptionHandler = drop
             c.resume()
@@ -195,11 +234,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func finish(_ ok: Bool, _ msg: String, userInitiated: Bool) {
         guard busy else { return }
         busy = false
+        operationID = nil
+        stateGeneration += 1
+        helperStatus = ok ? "Last request succeeded" : "Last request failed"
+        if !ok { lastError = msg.isEmpty ? "Requested state could not be verified." : msg }
+        state = .unknown
         updateIcon()
         refresh()
         guard !ok, userInitiated else { return }   // automatic restores fail silently
         alert("Could not switch Turbo Boost",
               msg + "\n\nFirst time? Allow the extension in System Settings → Privacy & Security, restart, then try again.\nStill stuck? Open an issue on GitHub (Mabykar/TBSwitcher) and include this message.")
+    }
+
+    @objc private func showLastError() {
+        alert("Last operation error", lastError)
+    }
+
+    @objc private func copyDiagnostics() {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+        let report = """
+        TBSwitcher: \(version)
+        macOS: \(ProcessInfo.processInfo.operatingSystemVersionString)
+        Turbo Boost (extension state): \(state.label)
+        Helper: \(helperStatus)
+        Kext installed: \(FileManager.default.fileExists(atPath: TB.kextPath))
+        Restore after wake: \(reapplyAfterWake)
+        Last choice OFF: \(wantedOff)
+        Last error: \(lastError)
+        """
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(report, forType: .string)
     }
 
     private func alert(_ title: String, _ text: String) {

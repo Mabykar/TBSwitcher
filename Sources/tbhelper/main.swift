@@ -33,7 +33,7 @@ final class Helper: NSObject, NSXPCListenerDelegate, TBHelperProtocol {
             // Turbo ON -> unload kext
             var r = runProcess("/sbin/kextunload", ["-b", TB.kextBundleID])
             if r.status != 0 { r = runProcess("/usr/bin/kmutil", ["unload", "-b", TB.kextBundleID]) }
-            reply(r.status == 0 || !isTurboBoostDisabled(), r.output)
+            reply(turboBoostState() == .enabled, r.output)
         } else {
             // Turbo OFF -> load kext
             guard FileManager.default.fileExists(atPath: TB.kextPath) else {
@@ -41,7 +41,7 @@ final class Helper: NSObject, NSXPCListenerDelegate, TBHelperProtocol {
             }
             var r = runProcess("/usr/bin/kextutil", [TB.kextPath])
             if r.status != 0 { r = runProcess("/usr/bin/kmutil", ["load", "-p", TB.kextPath]) }
-            let ok = r.status == 0 || isTurboBoostDisabled()
+            let ok = turboBoostState() == .disabled
             var out = r.output
             if !ok {
                 // The kext is not required to be signed to *try* loading it (it loads on some Macs),

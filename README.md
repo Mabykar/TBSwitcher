@@ -42,7 +42,7 @@ Opening the installer and allowing the kernel extension are separate approvals. 
 | Launch at login | Start TBSwitcher when you sign in |
 | Restore my choice after sleep / reboot | Reapply your last choice after wake and at app launch; enabled by default |
 
-The menu and tooltip show the detected Turbo Boost state. Turning Turbo Boost off can reduce heat, fan noise and power use at the cost of peak CPU performance. Results depend on your workload and Mac.
+The menu and tooltip show the detected Turbo Boost state. If the extension state cannot be read, the app shows Unknown and avoids switching based on a guess. Use **Copy diagnostics** in the menu to copy a troubleshooting report; **Show last error…** also includes failures during automatic restoration. Turning Turbo Boost off can reduce heat, fan noise and power use at the cost of peak CPU performance. Results depend on your workload and Mac.
 
 To restore your choice after signing in automatically, enable **Launch at login** as well.
 
