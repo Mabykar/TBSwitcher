@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+[[ "${3:-/}" == / ]] || exit 1
+/bin/launchctl bootstrap system /Library/LaunchDaemons/local.tbswitcher.helper.plist
+# Open the app manually after Installer finishes. Loading the kext is a user action.

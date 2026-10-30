@@ -48,6 +48,7 @@ if [[ -n "$KEXT_ARG" ]]; then
   KEXT_SRC="$KEXT_ARG"
 else
   for c in "$HERE/Vendor/DisableTurboBoost.64bits.kext" \
+           "/Applications/tbswitcher_resources/DisableTurboBoost.64bits.kext" \
            "/Applications/Turbo Boost Switcher.app/Contents/Resources/DisableTurboBoost.64bits.kext"; do
     [[ -d "$c" ]] || continue
     if is_signed "$c"; then KEXT_SRC="$c"; break; fi
@@ -57,13 +58,17 @@ else
 fi
 [[ -n "$KEXT_SRC" ]] || die "No kext found. Put DisableTurboBoost.64bits.kext into Vendor/ or run: bash install.sh --kext /path/to/it"
 
+if [[ "$KEXT_SRC" == "$HERE/Vendor/DisableTurboBoost.64bits.kext" ]]; then
+  bash "$HERE/packaging/verify-kext.sh" "$KEXT_SRC" || die "Bundled legacy kext is incomplete or modified. Restore the original Vendor files, including Info.plist~."
+fi
+
 ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$KEXT_SRC/Contents/Info.plist" 2>/dev/null || true)
 [[ "$ID" == "com.rugarciap.DisableTurboBoost" ]] || die "Unexpected kext bundle id: '$ID'"
 ok "kext: $KEXT_SRC"
 if is_signed "$KEXT_SRC"; then
   codesign -dv "$KEXT_SRC" 2>&1 | grep -E 'TeamIdentifier|Authority=' | sed 's/^/      /' || true
 else
-  say "  ! This kext is not code-signed. It does load on some Macs; if macOS refuses it, open an issue and tell us your Mac model and macOS version."
+  say "  ! This legacy kext is unsigned and relies on an Apple signature exception. Preserve the entire original bundle; availability depends on macOS."
 fi
 
 say "3/3 Installing…"
@@ -76,7 +81,9 @@ pkill -x TBSwitcher 2>/dev/null || true
 launchctl bootout system/$LABEL 2>/dev/null || true
 rm -rf "$SUP" "$APP"
 mkdir -p "$SUP"
-ditto "$KEXT_SRC" "$SUP/DisableTurboBoost.64bits.kext"     # ditto keeps the original bytes and any signature
+# Preserve the entire legacy bundle, including Info.plist~: Apple's signature
+# exception uses a bundle hash, so dropping the backup-looking file breaks loading.
+ditto "$KEXT_SRC" "$SUP/DisableTurboBoost.64bits.kext"
 install -m 755 "$HERE/build/TBHelper" "$SUP/TBHelper"
 ditto "$HERE/build/TBSwitcher.app" "$APP"
 chown -R root:wheel "$SUP" "$APP"

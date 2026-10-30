@@ -1,0 +1,31 @@
+TBSwitcher — Intel Macs, macOS 13 or newer
+
+INSTALL
+1. Open the included PKG and follow Installer. Enter your administrator password.
+2. Open TBSwitcher from Applications.
+3. Click the lightning icon in the menu bar to turn Turbo Boost off.
+4. If macOS requests approval, open System Settings > Privacy & Security,
+   allow “Legacy Developer: Rugarciap”, and restart. Try the switch again.
+
+This free community build is not signed with an Apple Developer ID or notarized.
+If macOS blocks the installer, first attempt to open it, then go to
+System Settings > Privacy & Security > Open Anyway (“Все равно открыть”).
+Only approve a download you trust. No global security settings need changing.
+Apple Developer membership and developer tools are not required to install.
+
+Left-click: toggle Turbo Boost. Right-click: settings and quit.
+Apple Silicon is not supported. Preserve the original kext files unchanged.
+The legacy Apple signature exception may not be available on every macOS version.
+
+UNINSTALL
+The included uninstall.command removes the app and its root helper and attempts
+to unload the kext. Administrator access is required. Restart if necessary.
+The kext is shared with the original Turbo Boost Switcher, so unloading it also
+affects that application's current Turbo Boost state.
+
+CREDITS
+Rubén García Pérez (rugarciap): Turbo Boost Switcher.
+Adam Strzelecki (nanoant): original DisableTurboBoost.kext.
+Third-party license: LICENSE-nanoant.txt. TBSwitcher license: LICENSE.txt.
+Project and source: https://github.com/Mabykar/TBSwitcher
+Support the original: https://www.rugarciap.com/turbo-boost-switcher-for-os-x/

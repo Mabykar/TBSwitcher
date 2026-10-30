@@ -4,49 +4,103 @@
 
 # TBSwitcher
 
-**A Tiny Menu Bar switch for Intel Turbo Boost.**
+**A small menu bar switch for Intel Turbo Boost.**
 
-Click the bolt → Turbo Boost goes off (cooler, quieter, longer battery).<br>
-Click again → it's back. **No admin password on every click.**
+Click the lightning icon to turn Turbo Boost off. Click again to turn it back on.<br>
+**No administrator password on every click.**
 
-[![Platform](https://img.shields.io/badge/Platform-Intel%20Mac-000000?logo=apple&logoColor=white)](#)
-[![macOS](https://img.shields.io/badge/macOS-13%2B-1E90FF?logo=apple&logoColor=white)](#)
-[![Status](https://img.shields.io/badge/Status-Early%20Release-orange)](#)
+[![Platform](https://img.shields.io/badge/Platform-Intel%20Mac-000000?logo=apple&logoColor=white)](#compatibility)
+[![macOS](https://img.shields.io/badge/macOS-13%2B-1E90FF?logo=apple&logoColor=white)](#compatibility)
+[![Status](https://img.shields.io/badge/Status-Stable-brightgreen)](https://github.com/Mabykar/TBSwitcher/releases)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
+[**Download the latest release**](https://github.com/Mabykar/TBSwitcher/releases/latest)
 
 </div>
 
-> [WARNING]
-> **Status: Early Release.** Verified on one Mac — MacBook Pro 16" (Intel), macOS Tahoe 26, SIP enabled.
-> Reports from other setups are very welcome.
-
 ## Install
 
-**Requirements:** an Intel Mac, macOS 13 or newer, and the Command Line Tools.
+1. Download `TBSwitcher-<version>-Intel.dmg` from [Releases](https://github.com/Mabykar/TBSwitcher/releases/latest).
+2. Open the DMG and run the included `.pkg` installer. Enter your administrator password to install the app and helper.
+3. Open **TBSwitcher** from Applications and click the lightning icon in the menu bar.
+4. If macOS requests extension approval, open **System Settings → Privacy & Security**, allow **Legacy Developer: Rugarciap**, and restart. Open TBSwitcher and try the switch again.
 
-```bash
-xcode-select --install
-```
+You can also download and run the standalone `.pkg`. Developer tools and an Apple Developer subscription are not needed to install.
 
-### One line
+### If macOS blocks the installer
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/Mabykar/TBSwitcher/main/get.sh | bash
-```
+The installer has no Developer ID signature or Apple notarization. After attempting to open a trusted download, go to **System Settings → Privacy & Security → Open Anyway** and confirm.
 
-The script:
+Opening the installer and allowing the kernel extension are separate approvals. The extension may require a restart. There is no need to disable SIP or Gatekeeper globally.
 
-1. downloads the source into a temporary folder;
-2. tells you exactly what it is about to install and asks you to confirm;
-3. builds the app and runs `install.sh` — **admin password asked once**.
+## Use
 
-Uninstall the same way:
+| Action | Result |
+| :--- | :--- |
+| Left-click the lightning icon | Toggle Turbo Boost |
+| Right-click or Control-click | Open the menu |
+| Launch at login | Start TBSwitcher when you sign in |
+| Restore my choice after sleep / reboot | Reapply your last choice after wake and at app launch; enabled by default |
+
+The menu and tooltip show the detected Turbo Boost state. Turning Turbo Boost off can reduce heat, fan noise and power use at the cost of peak CPU performance. Results depend on your workload and Mac.
+
+To restore your choice after signing in automatically, enable **Launch at login** as well.
+
+## Compatibility
+
+- **Intel Mac**, macOS **13 or newer**. Apple Silicon is not supported.
+- Installation and switching have been confirmed by the maintainer on two Macs. One tested system is a MacBook Pro 16-inch with Intel CPU, macOS Tahoe 26 and SIP enabled.
+- The legacy kernel extension relies on an Apple signature exception. Availability on every macOS version and Mac configuration is not guaranteed.
+
+## Uninstall
+
+Run `uninstall.command` from the DMG and enter your administrator password. It removes the app and helper and attempts to unload the extension. Restart if the extension remains active.
+
+The driver is shared with the original Turbo Boost Switcher: unloading it also affects that application's current Turbo Boost state.
+
+Alternatively, remove an installation using the source installer:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Mabykar/TBSwitcher/main/get.sh | bash -s -- --uninstall
 ```
 
-### Manual
+## Troubleshooting
+
+**The extension needs approval or a restart.** Open Privacy & Security, allow the extension, restart, then try again. Reinstalling alone does not complete this approval.
+
+**The helper is unavailable.** Run the PKG installer again, then reopen `/Applications/TBSwitcher.app`.
+
+**The error says `Bad code signature`.** Use the complete kext shipped with this project. Do not remove `Contents/Info.plist~`, edit the bundle, or re-sign it. The source installer and release packager check the bundled files before installation or packaging.
+
+If the problem persists, [open an issue](https://github.com/Mabykar/TBSwitcher/issues) with your Mac model, macOS version and the complete error message.
+
+### Verify the effect
+
+For an optional frequency check, compare Turbo Boost off and on under a similar CPU load:
+
+```bash
+sudo powermetrics --samplers cpu_power -i 2000 -n 2 | grep "CPU Average frequency"
+```
+
+On the author's Mac, off stayed below approximately 97% of nominal frequency, while on reached approximately 176% (4.2 GHz). These are observations for that machine, not targets for all Macs.
+
+## Build from source
+
+An Intel Mac running macOS 13 or newer and the Command Line Tools are required:
+
+```bash
+xcode-select --install
+```
+
+### One-line installation
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Mabykar/TBSwitcher/main/get.sh | bash
+```
+
+The script downloads the source, explains the installation and asks for confirmation, then builds the app. An administrator password is requested to install the helper.
+
+### Manual installation
 
 ```bash
 git clone https://github.com/Mabykar/TBSwitcher.git
@@ -54,62 +108,45 @@ cd TBSwitcher
 bash install.sh
 ```
 
-macOS may ask you to allow the kernel extension the first time:
-**System Settings → Privacy & Security → Allow**, then restart and click ⚡ again.
+To build without installing, run `bash build.sh`. Outputs are in `build/`.
 
-## Check that it really works
+### Build PKG and DMG
 
 ```bash
-sudo powermetrics --samplers cpu_power -i 2000 -n 2 | grep "CPU Average frequency"
+bash package.sh
 ```
 
-Run it with Turbo Boost **off**, then **on**, under some load.
+The script rebuilds the app and helper, validates the original kext using `packaging/kext.sha256`, and creates:
 
-| State | Observed on the author's Mac |
-| :--- | :--- |
-| **Off** | never above ~97 % of nominal frequency |
-| **On** | peaks of ~176 % (about 4.2 GHz) |
+- `dist/TBSwitcher-<version>-Intel.pkg`
+- `dist/TBSwitcher-<version>-Intel.dmg`
+- `dist/TBSwitcher-<version>-SHA256SUMS.txt`
 
-## FAQ
+The DMG includes the installer, instructions, licenses and an uninstaller. Packaging is free and needs no Apple Developer account. The installer supports the running startup disk only; it does not load the kext or restart the Mac automatically.
 
-<details>
-<summary><b>Will Turbo Boost stay off after sleep or reboot?</b></summary>
+To verify downloaded release files, place the PKG, DMG and checksum file in the same directory and run:
 
-Other tools built on the same kext report that it can be unloaded on wake. TBSwitcher remembers your last choice and
-re-applies it after wake and at launch — menu: *Restore my choice after sleep / reboot*, **on by default**.
+```bash
+shasum -a 256 -c TBSwitcher-<version>-SHA256SUMS.txt
+```
 
-</details>
+Replace `<version>` with the downloaded version. Both files should report `OK`.
 
-<details>
-<summary><b>Why does macOS ask me to allow an extension?</b></summary>
+### Preserve the legacy kext
 
-It does that for all third-party kernel extensions.
+The bundled kext is unsigned. macOS recognizes the original bundle through an Apple signature-exception list using a hash of the entire package. Even the backup-looking `Contents/Info.plist~` contributes to that hash and must be preserved.
 
-</details>
-
-<details>
-<summary><b>Why isn't the app notarized?</b></summary>
-
-That needs a paid Apple Developer ID. For now you build it yourself from source — which is also why you can read
-every line.
-
-</details>
+The original bundle hash is `f5b755b280b4e501bacd72362f0bb26d006d1762` using Apple's `getAdhocSignatureHash` algorithm. It matches the `OSKextSigExceptionHashList` entry inspected on macOS 26.7.2. This exception does not replace user approval. Signing the application does not sign the kext.
 
 ## Credits ❤️
 
-This project exists only because of two people. **Huge thanks to:**
+TBSwitcher builds on the work of:
 
-> ### [@rugarciap](https://github.com/rugarciap)
-> Author of [Turbo Boost Switcher](https://github.com/rugarciap/Turbo-Boost-Switcher) — the app and kernel extension that make all of this possible.
->
-> Want sensors, charts, auto modes and a polished, signed app? Buy his [**PRO version**](https://rubgape.gumroad.com/l/YeBQUF) — that is what keeps the whole thing alive.
+- **[Rubén García Pérez (@rugarciap)](https://github.com/rugarciap)** — author of [Turbo Boost Switcher](https://github.com/rugarciap/Turbo-Boost-Switcher) and its version of the kernel extension. Please support his work through the [original Turbo Boost Switcher project](https://www.rugarciap.com/turbo-boost-switcher-for-os-x/).
+- **[Adam Strzelecki (@nanoant)](https://github.com/nanoant)** — author of the original [DisableTurboBoost.kext](https://github.com/nanoant/DisableTurboBoost.kext).
 
-> ### [@nanoant](https://github.com/nanoant)
-> Author of the original [DisableTurboBoost.kext](https://github.com/nanoant/DisableTurboBoost.kext).
-
-TBSwitcher is an independent, minimal project and is not affiliated with either of them. Details: [NOTICE.md](NOTICE.md).
+TBSwitcher is an independent project and is not affiliated with either author.
 
 ## License
 
-TBSwitcher's own code is [MIT](LICENSE).
-Third-party files in `Vendor/` keep their original licenses — see [NOTICE.md](NOTICE.md).
+TBSwitcher's own code is [MIT](LICENSE). The original kernel extension's license and attribution are included in [Vendor/LICENSE-nanoant.txt](Vendor/LICENSE-nanoant.txt).

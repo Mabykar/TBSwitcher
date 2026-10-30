@@ -3,8 +3,11 @@ build
 .vscode
 .DS_Store
 *~
+!Vendor/DisableTurboBoost.64bits.kext/Contents/Info.plist~
 *.zip
 .swiftpm/
 DerivedData/
 xcuserdata/
 .DS_Store
+
+dist/
